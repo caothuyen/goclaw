@@ -71,9 +71,21 @@ func (t *SessionsHistoryTool) Execute(ctx context.Context, args map[string]any) 
 	includeTools, _ := args["include_tools"].(bool)
 
 	// Security: validate session belongs to current agent
-	agentID := resolveAgentIDString(ctx)
-	if agentID != "" && !strings.HasPrefix(sessionKey, "agent:"+agentID+":") {
-		return ErrorResult("access denied: session belongs to a different agent")
+	// Skip validation if checking own session (sessionKey from context)
+	currentSessionKey := ToolSandboxKeyFromCtx(ctx)
+	if sessionKey != currentSessionKey {
+		// Get agent_key from current session key instead of UUID
+		agentKey := ""
+		if currentSessionKey != "" {
+			// Parse agent_key from session_key format: agent:{agent_key}:{channel}:...
+			parts := strings.SplitN(currentSessionKey, ":", 3)
+			if len(parts) >= 2 {
+				agentKey = parts[1]
+			}
+		}
+		if agentKey != "" && !strings.HasPrefix(sessionKey, "agent:"+agentKey+":") {
+			return ErrorResult("access denied: session belongs to a different agent")
+		}
 	}
 
 	history := t.sessions.GetHistory(ctx, sessionKey)
