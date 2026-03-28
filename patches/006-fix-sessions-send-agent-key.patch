@@ -1,12 +1,26 @@
 ﻿diff --git a/internal/tools/sessions_send.go b/internal/tools/sessions_send.go
-index b8e565a5..0034b03f 100644
+index 0034b03f..89f735b3 100644
 --- a/internal/tools/sessions_send.go
 +++ b/internal/tools/sessions_send.go
-@@ -118,6 +118,7 @@ func (t *SessionsSendTool) Execute(ctx context.Context, args map[string]any) *Re
- 		Content:  message,
- 		PeerKind: "direct",
- 		TenantID: store.TenantIDFromContext(ctx),
-+		AgentID:  agentKey, // Set agent_key for routing
+@@ -112,13 +112,14 @@ func (t *SessionsSendTool) Execute(ctx context.Context, args map[string]any) *Re
+ 
+ 	// Publish as an inbound message (same mechanism as channels)
+ 	t.msgBus.PublishInbound(bus.InboundMessage{
+-		Channel:  "system",
+-		SenderID: "session_send_tool",
+-		ChatID:   sessionKey,
+-		Content:  message,
+-		PeerKind: "direct",
+-		TenantID: store.TenantIDFromContext(ctx),
+-		AgentID:  agentKey, // Set agent_key for routing
++		Channel:    "system",
++		SenderID:   "session_send_tool",
++		ChatID:     sessionKey,
++		SessionKey: sessionKey, // Use target session key directly
++		Content:    message,
++		PeerKind:   "direct",
++		TenantID:   store.TenantIDFromContext(ctx),
++		AgentID:    agentKey, // Set agent_key for routing
  	})
  
  	return SilentResult(fmt.Sprintf(`{"status":"accepted","session_key":"%s"}`, sessionKey))

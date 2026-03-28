@@ -112,13 +112,14 @@ func (t *SessionsSendTool) Execute(ctx context.Context, args map[string]any) *Re
 
 	// Publish as an inbound message (same mechanism as channels)
 	t.msgBus.PublishInbound(bus.InboundMessage{
-		Channel:  "system",
-		SenderID: "session_send_tool",
-		ChatID:   sessionKey,
-		Content:  message,
-		PeerKind: "direct",
-		TenantID: store.TenantIDFromContext(ctx),
-		AgentID:  agentKey, // Set agent_key for routing
+		Channel:    "system",
+		SenderID:   "session_send_tool",
+		ChatID:     sessionKey,
+		SessionKey: sessionKey, // Use target session key directly
+		Content:    message,
+		PeerKind:   "direct",
+		TenantID:   store.TenantIDFromContext(ctx),
+		AgentID:    agentKey, // Set agent_key for routing
 	})
 
 	return SilentResult(fmt.Sprintf(`{"status":"accepted","session_key":"%s"}`, sessionKey))
