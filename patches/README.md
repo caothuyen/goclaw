@@ -25,6 +25,13 @@ Thư mục này chứa các patches tùy chỉnh cho GoClaw.
 **Ngày tạo:** 2026-03-27  
 **Trạng thái:** ✅ Hoạt động  
 
+### 004-fix-sessions-list-agent-key.patch
+**Mô tả:** Fix lỗi sessions_list trả về mảng rỗng  
+**Vấn đề:** Tool dùng agent UUID để query nhưng session_key format dùng agent_key (name), gây không match → trả về rỗng  
+**Giải pháp:** Parse agent_key từ current session_key thay vì dùng UUID  
+**Ngày tạo:** 2026-03-28  
+**Trạng thái:** ✅ Hoạt động  
+
 ---
 
 ## 🔧 Cách sử dụng
