@@ -203,6 +203,9 @@ func (c *Channel) handleTextMessage(msg *zaloMessage) {
 		return
 	}
 
+	// Send typing indicator
+	go c.sendChatAction(chatID, "typing")
+
 	content := msg.Text
 	if content == "" {
 		content = "[empty message]"
@@ -238,6 +241,9 @@ func (c *Channel) handleImageMessage(msg *zaloMessage) {
 	if !c.checkDMPolicy(ctx, senderID, chatID) {
 		return
 	}
+
+	// Send typing indicator
+	go c.sendChatAction(chatID, "typing")
 
 	content := msg.Caption
 	if content == "" {
@@ -533,9 +539,18 @@ func (c *Channel) getUpdates(timeout int) ([]zaloUpdate, error) {
 		return nil, err
 	}
 
+	// Debug: log raw response
+	slog.Debug("zalo getUpdates raw response", "result", string(result))
+
+	// Try to unmarshal as array first
 	var updates []zaloUpdate
 	if err := json.Unmarshal(result, &updates); err != nil {
-		return nil, fmt.Errorf("unmarshal updates: %w", err)
+		// If array fails, try single object wrapped in array
+		var single zaloUpdate
+		if err2 := json.Unmarshal(result, &single); err2 == nil {
+			return []zaloUpdate{single}, nil
+		}
+		return nil, fmt.Errorf("unmarshal updates: %w (raw: %s)", err, string(result))
 	}
 	return updates, nil
 }
@@ -560,5 +575,15 @@ func (c *Channel) sendPhoto(chatID, photoURL, caption string) error {
 	}
 
 	_, err := c.callAPI("sendPhoto", params)
+	return err
+}
+
+func (c *Channel) sendChatAction(chatID, action string) error {
+	params := map[string]any{
+		"chat_id": chatID,
+		"action":  action,
+	}
+
+	_, err := c.callAPI("sendChatAction", params)
 	return err
 }
