@@ -39,6 +39,13 @@ Thư mục này chứa các patches tùy chỉnh cho GoClaw.
 **Ngày tạo:** 2026-03-28  
 **Trạng thái:** ✅ Hoạt động  
 
+### 006-fix-sessions-send-agent-key.patch
+**Mô tả:** Fix lỗi sessions_send access check và label resolution với UUID vs agent_key mismatch  
+**Vấn đề:** Tool dùng agent UUID để check prefix và list sessions khi resolve label, gây access denied và không tìm được session  
+**Giải pháp:** Parse agent_key từ current session_key cho cả label resolution và security check  
+**Ngày tạo:** 2026-03-28  
+**Trạng thái:** ✅ Hoạt động  
+
 ---
 
 ## 🔧 Cách sử dụng
