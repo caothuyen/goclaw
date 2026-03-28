@@ -1,0 +1,38 @@
+﻿diff --git a/internal/channels/zalo/zalo.go b/internal/channels/zalo/zalo.go
+index ea2ece4c..55d9d778 100644
+--- a/internal/channels/zalo/zalo.go
++++ b/internal/channels/zalo/zalo.go
+@@ -203,6 +203,9 @@ func (c *Channel) handleTextMessage(msg *zaloMessage) {
+ 		return
+ 	}
+ 
++	// Send typing indicator
++	go c.sendChatAction(chatID, "typing")
++
+ 	content := msg.Text
+ 	if content == "" {
+ 		content = "[empty message]"
+@@ -239,6 +242,9 @@ func (c *Channel) handleImageMessage(msg *zaloMessage) {
+ 		return
+ 	}
+ 
++	// Send typing indicator
++	go c.sendChatAction(chatID, "typing")
++
+ 	content := msg.Caption
+ 	if content == "" {
+ 		content = "[image]"
+@@ -571,3 +577,13 @@ func (c *Channel) sendPhoto(chatID, photoURL, caption string) error {
+ 	_, err := c.callAPI("sendPhoto", params)
+ 	return err
+ }
++
++func (c *Channel) sendChatAction(chatID, action string) error {
++	params := map[string]any{
++		"chat_id": chatID,
++		"action":  action,
++	}
++
++	_, err := c.callAPI("sendChatAction", params)
++	return err
++}

@@ -1,0 +1,24 @@
+﻿diff --git a/internal/channels/zalo/zalo.go b/internal/channels/zalo/zalo.go
+index 2357f117..ea2ece4c 100644
+--- a/internal/channels/zalo/zalo.go
++++ b/internal/channels/zalo/zalo.go
+@@ -533,9 +533,18 @@ func (c *Channel) getUpdates(timeout int) ([]zaloUpdate, error) {
+ 		return nil, err
+ 	}
+ 
++	// Debug: log raw response
++	slog.Debug("zalo getUpdates raw response", "result", string(result))
++
++	// Try to unmarshal as array first
+ 	var updates []zaloUpdate
+ 	if err := json.Unmarshal(result, &updates); err != nil {
+-		return nil, fmt.Errorf("unmarshal updates: %w", err)
++		// If array fails, try single object wrapped in array
++		var single zaloUpdate
++		if err2 := json.Unmarshal(result, &single); err2 == nil {
++			return []zaloUpdate{single}, nil
++		}
++		return nil, fmt.Errorf("unmarshal updates: %w (raw: %s)", err, string(result))
+ 	}
+ 	return updates, nil
+ }

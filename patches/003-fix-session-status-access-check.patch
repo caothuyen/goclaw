@@ -1,0 +1,21 @@
+﻿diff --git a/internal/tools/sessions.go b/internal/tools/sessions.go
+index 42c8ae80..703eb6d0 100644
+--- a/internal/tools/sessions.go
++++ b/internal/tools/sessions.go
+@@ -143,9 +143,13 @@ func (t *SessionStatusTool) Execute(ctx context.Context, args map[string]any) *R
+ 	}
+ 
+ 	// Security: validate session belongs to current agent
+-	agentID := resolveAgentIDString(ctx)
+-	if agentID != "" && !strings.HasPrefix(sessionKey, "agent:"+agentID+":") {
+-		return ErrorResult("access denied: session belongs to a different agent")
++	// Skip validation if checking own session (sessionKey from context)
++	currentSessionKey := ToolSandboxKeyFromCtx(ctx)
++	if sessionKey != currentSessionKey {
++		agentID := resolveAgentIDString(ctx)
++		if agentID != "" && !strings.HasPrefix(sessionKey, "agent:"+agentID+":") {
++			return ErrorResult("access denied: session belongs to a different agent")
++		}
+ 	}
+ 
+ 	data := t.sessions.GetOrCreate(ctx, sessionKey)
