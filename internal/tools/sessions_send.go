@@ -68,11 +68,20 @@ func (t *SessionsSendTool) Execute(ctx context.Context, args map[string]any) *Re
 		return ErrorResult("either session_key or label is required")
 	}
 
-	agentID := resolveAgentIDString(ctx)
-
 	// Resolve by label if needed
 	if sessionKey == "" && label != "" {
-		sessions := t.sessions.List(ctx, agentID)
+		// Get agent_key from current session key instead of UUID
+		agentKey := ""
+		currentSessionKey := ToolSandboxKeyFromCtx(ctx)
+		if currentSessionKey != "" {
+			// Parse agent_key from session_key format: agent:{agent_key}:{channel}:...
+			parts := strings.SplitN(currentSessionKey, ":", 3)
+			if len(parts) >= 2 {
+				agentKey = parts[1]
+			}
+		}
+		
+		sessions := t.sessions.List(ctx, agentKey)
 		for _, s := range sessions {
 			// Check if label matches by loading session data
 			data := t.sessions.GetOrCreate(ctx, s.Key)
@@ -87,7 +96,17 @@ func (t *SessionsSendTool) Execute(ctx context.Context, args map[string]any) *Re
 	}
 
 	// Security: validate target session belongs to same agent
-	if agentID != "" && !strings.HasPrefix(sessionKey, "agent:"+agentID+":") {
+	// Get agent_key from current session key instead of UUID
+	agentKey := ""
+	currentSessionKey := ToolSandboxKeyFromCtx(ctx)
+	if currentSessionKey != "" {
+		// Parse agent_key from session_key format: agent:{agent_key}:{channel}:...
+		parts := strings.SplitN(currentSessionKey, ":", 3)
+		if len(parts) >= 2 {
+			agentKey = parts[1]
+		}
+	}
+	if agentKey != "" && !strings.HasPrefix(sessionKey, "agent:"+agentKey+":") {
 		return ErrorResult("access denied: target session belongs to a different agent")
 	}
 
