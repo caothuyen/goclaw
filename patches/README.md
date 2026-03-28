@@ -32,6 +32,13 @@ Thư mục này chứa các patches tùy chỉnh cho GoClaw.
 **Ngày tạo:** 2026-03-28  
 **Trạng thái:** ✅ Hoạt động  
 
+### 005-fix-sessions-history-agent-key.patch
+**Mô tả:** Fix lỗi sessions_history access check với UUID vs agent_key mismatch  
+**Vấn đề:** Tool dùng agent UUID để check prefix nhưng session_key format dùng agent_key (name), gây access denied khi cross-session access  
+**Giải pháp:** Skip validation cho own session, parse agent_key từ current session_key cho cross-session check  
+**Ngày tạo:** 2026-03-28  
+**Trạng thái:** ✅ Hoạt động  
+
 ---
 
 ## 🔧 Cách sử dụng
