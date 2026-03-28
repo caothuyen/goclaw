@@ -46,6 +46,13 @@ Thư mục này chứa các patches tùy chỉnh cho GoClaw.
 **Ngày tạo:** 2026-03-28  
 **Trạng thái:** ✅ Hoạt động  
 
+### 007-update-message-tool-description.patch
+**Mô tả:** Thêm cảnh báo bảo mật vào description của tool message  
+**Vấn đề:** Tool message có thể gửi đến bất kỳ user nào trong tenant mà không có user-level authorization, gây rủi ro bảo mật (cross-user messaging, spam, phishing)  
+**Giải pháp:** Thêm warning "⚠️ ADMIN ONLY" vào description để cảnh báo tool chỉ nên dùng cho admin agents  
+**Ngày tạo:** 2026-03-28  
+**Trạng thái:** ✅ Hoạt động  
+
 ---
 
 ## 🔧 Cách sử dụng
