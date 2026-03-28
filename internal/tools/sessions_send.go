@@ -111,15 +111,25 @@ func (t *SessionsSendTool) Execute(ctx context.Context, args map[string]any) *Re
 	}
 
 	// Publish as an inbound message (same mechanism as channels)
+	// Parse session key to extract channel and chat_id for proper routing
+	// Format: agent:{agent_key}:{channel}:{peer_kind}:{chat_id}
+	parts := strings.SplitN(sessionKey, ":", 5)
+	if len(parts) < 5 {
+		return ErrorResult(fmt.Sprintf("invalid session_key format: %s", sessionKey))
+	}
+	
+	targetChannel := parts[2]
+	targetPeerKind := parts[3]
+	targetChatID := parts[4]
+	
 	t.msgBus.PublishInbound(bus.InboundMessage{
-		Channel:    "system",
-		SenderID:   "session_send_tool",
-		ChatID:     sessionKey,
-		SessionKey: sessionKey, // Use target session key directly
-		Content:    message,
-		PeerKind:   "direct",
-		TenantID:   store.TenantIDFromContext(ctx),
-		AgentID:    agentKey, // Set agent_key for routing
+		Channel:  targetChannel,
+		SenderID: "session_send_tool",
+		ChatID:   targetChatID,
+		Content:  message,
+		PeerKind: targetPeerKind,
+		TenantID: store.TenantIDFromContext(ctx),
+		AgentID:  agentKey,
 	})
 
 	return SilentResult(fmt.Sprintf(`{"status":"accepted","session_key":"%s"}`, sessionKey))
