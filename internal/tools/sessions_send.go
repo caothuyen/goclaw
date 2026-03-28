@@ -118,6 +118,7 @@ func (t *SessionsSendTool) Execute(ctx context.Context, args map[string]any) *Re
 		Content:  message,
 		PeerKind: "direct",
 		TenantID: store.TenantIDFromContext(ctx),
+		AgentID:  agentKey, // Set agent_key for routing
 	})
 
 	return SilentResult(fmt.Sprintf(`{"status":"accepted","session_key":"%s"}`, sessionKey))
