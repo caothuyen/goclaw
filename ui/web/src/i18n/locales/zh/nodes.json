@@ -11,6 +11,7 @@
     "channel": "Channel",
     "senderId": "发送者 ID",
     "name": "名称",
+    "session": "会话",
     "paired": "配对时间",
     "by": "操作人",
     "actions": "操作"

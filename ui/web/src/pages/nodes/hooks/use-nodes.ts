@@ -27,6 +27,7 @@ export interface PairedDevice {
   paired_at: number;
   paired_by: string;
   display_name?: string;
+  session_key?: string;
 }
 
 export function useNodes() {
@@ -44,8 +45,32 @@ export function useNodes() {
         pending: PendingPairing[];
         paired: PairedDevice[];
       }>(Methods.PAIRING_LIST);
-      setPendingPairings(res.pending ?? []);
-      setPairedDevices(res.paired ?? []);
+      
+      const pending = res.pending ?? [];
+      const paired = res.paired ?? [];
+      
+      // Fetch sessions to map with paired devices
+      if (paired.length > 0) {
+        try {
+          const sessionsRes = await ws.call<{ sessions: Array<{ key: string }> }>(Methods.SESSIONS_LIST, {});
+          const sessions = sessionsRes.sessions ?? [];
+          
+          // Map sessions to paired devices
+          paired.forEach(device => {
+            const session = sessions.find(s => 
+              s.key.includes(device.channel) && s.key.includes(device.sender_id)
+            );
+            if (session) {
+              device.session_key = session.key;
+            }
+          });
+        } catch {
+          // Ignore session fetch errors
+        }
+      }
+      
+      setPendingPairings(pending);
+      setPairedDevices(paired);
     } catch {
       // ignore
     } finally {
