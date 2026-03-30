@@ -23,7 +23,7 @@ func buildPairingReply(code string) string {
 
 // sendPairingReply generates a pairing code and sends the reply to the user.
 // Debounces: won't send another reply to the same user within 60 seconds.
-func (c *Channel) sendPairingReply(ctx context.Context, chatID int64, userID, username string) {
+func (c *Channel) sendPairingReply(ctx context.Context, chatID int64, userID, username, firstName, lastName string) {
 	if c.pairingService == nil {
 		return
 	}
@@ -35,7 +35,10 @@ func (c *Channel) sendPairingReply(ctx context.Context, chatID int64, userID, us
 		}
 	}
 
-	meta := map[string]string{"username": username}
+	meta := map[string]string{"username": username, "first_name": firstName}
+	if lastName != "" {
+		meta["last_name"] = lastName
+	}
 	code, err := c.pairingService.RequestPairing(ctx, userID, c.Name(), fmt.Sprintf("%d", chatID), "default", meta)
 	if err != nil {
 		slog.Debug("pairing request failed", "user_id", userID, "error", err)

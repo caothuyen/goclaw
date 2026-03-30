@@ -67,9 +67,10 @@ func overrideSessionKeyFromLocalKey(sessionKey, localKey, agentID, channel, chat
 func extractSessionMetadata(msg bus.InboundMessage, peerKind string) map[string]string {
 	meta := make(map[string]string)
 
-	// Display name: prefer first_name (Telegram), fall back to display_name (Discord)
-	if v := msg.Metadata["first_name"]; v != "" {
-		meta["display_name"] = v
+	// Display name: prefer first_name + last_name (Telegram), fall back to display_name (Discord)
+	if firstName := msg.Metadata["first_name"]; firstName != "" {
+		lastName := msg.Metadata["last_name"]
+		meta["display_name"] = strings.TrimSpace(firstName + " " + lastName)
 	} else if v := msg.Metadata["display_name"]; v != "" {
 		meta["display_name"] = v
 	}

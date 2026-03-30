@@ -12,6 +12,12 @@ export interface PendingPairing {
   account_id: string;
   created_at: number;
   expires_at: number;
+  metadata?: {
+    username?: string;
+    first_name?: string;
+    last_name?: string;
+    display_name?: string;
+  };
 }
 
 export interface PairedDevice {
@@ -20,6 +26,7 @@ export interface PairedDevice {
   chat_id: string;
   paired_at: number;
   paired_by: string;
+  display_name?: string;
 }
 
 export function useNodes() {

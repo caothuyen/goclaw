@@ -199,8 +199,13 @@ func (c *Channel) handleTextMessage(msg *zaloMessage) {
 	}
 
 	// DM policy enforcement (Zalo is DM-only)
-	if !c.checkDMPolicy(ctx, senderID, chatID) {
+	if !c.checkDMPolicy(ctx, senderID, chatID, msg.From.Username, msg.From.DisplayName) {
 		return
+	}
+
+	// Collect contact
+	if cc := c.ContactCollector(); cc != nil {
+		cc.EnsureContact(ctx, c.Type(), c.Name(), senderID, senderID, msg.From.DisplayName, msg.From.Username, "direct")
 	}
 
 	// Send typing indicator
@@ -238,8 +243,13 @@ func (c *Channel) handleImageMessage(msg *zaloMessage) {
 		chatID = senderID
 	}
 
-	if !c.checkDMPolicy(ctx, senderID, chatID) {
+	if !c.checkDMPolicy(ctx, senderID, chatID, msg.From.Username, msg.From.DisplayName) {
 		return
+	}
+
+	// Collect contact
+	if cc := c.ContactCollector(); cc != nil {
+		cc.EnsureContact(ctx, c.Type(), c.Name(), senderID, senderID, msg.From.DisplayName, msg.From.Username, "direct")
 	}
 
 	// Send typing indicator
@@ -288,7 +298,7 @@ func (c *Channel) handleImageMessage(msg *zaloMessage) {
 
 // --- DM Policy ---
 
-func (c *Channel) checkDMPolicy(ctx context.Context, senderID, chatID string) bool {
+func (c *Channel) checkDMPolicy(ctx context.Context, senderID, chatID, username, displayName string) bool {
 	switch c.dmPolicy {
 	case "disabled":
 		slog.Debug("zalo message rejected: DMs disabled", "sender_id", senderID)
@@ -324,12 +334,12 @@ func (c *Channel) checkDMPolicy(ctx context.Context, senderID, chatID string) bo
 		}
 
 		// Send pairing reply (debounced)
-		c.sendPairingReply(ctx, senderID, chatID)
+		c.sendPairingReply(ctx, senderID, chatID, username, displayName)
 		return false
 	}
 }
 
-func (c *Channel) sendPairingReply(ctx context.Context, senderID, chatID string) {
+func (c *Channel) sendPairingReply(ctx context.Context, senderID, chatID, username, displayName string) {
 	if c.pairingService == nil {
 		return
 	}
@@ -341,7 +351,15 @@ func (c *Channel) sendPairingReply(ctx context.Context, senderID, chatID string)
 		}
 	}
 
-	code, err := c.pairingService.RequestPairing(ctx, senderID, c.Name(), chatID, "default", nil)
+	meta := map[string]string{}
+	if username != "" {
+		meta["username"] = username
+	}
+	if displayName != "" {
+		meta["display_name"] = displayName
+	}
+
+	code, err := c.pairingService.RequestPairing(ctx, senderID, c.Name(), chatID, "default", meta)
 	if err != nil {
 		slog.Debug("zalo pairing request failed", "sender_id", senderID, "error", err)
 		return
@@ -459,8 +477,10 @@ type zaloMessage struct {
 }
 
 type zaloFrom struct {
-	ID       string `json:"id"`
-	Username string `json:"username"`
+	ID          string `json:"id"`
+	Username    string `json:"username"`
+	DisplayName string `json:"display_name"`
+	IsBot       bool   `json:"is_bot"`
 }
 
 type zaloChat struct {

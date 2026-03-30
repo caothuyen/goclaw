@@ -206,8 +206,14 @@ func (s *PGPairingStore) ListPaired(ctx context.Context) []store.PairedDeviceDat
 	s.db.ExecContext(ctx, "DELETE FROM paired_devices WHERE expires_at IS NOT NULL AND expires_at < NOW()")
 
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT sender_id, channel, chat_id, paired_by, paired_at, COALESCE(metadata, '{}')
-		 FROM paired_devices WHERE tenant_id = $1 ORDER BY paired_at DESC`, tid)
+		`SELECT pd.sender_id, pd.channel, pd.chat_id, pd.paired_by, pd.paired_at, 
+		        COALESCE(pd.metadata, '{}'), COALESCE(cc.display_name, '')
+		 FROM paired_devices pd
+		 LEFT JOIN channel_contacts cc ON pd.sender_id = cc.sender_id 
+		                                AND pd.channel = cc.channel_type
+		                                AND pd.tenant_id = cc.tenant_id
+		 WHERE pd.tenant_id = $1 
+		 ORDER BY pd.paired_at DESC`, tid)
 	if err != nil {
 		return nil
 	}
@@ -218,13 +224,33 @@ func (s *PGPairingStore) ListPaired(ctx context.Context) []store.PairedDeviceDat
 		var d store.PairedDeviceData
 		var pairedAt time.Time
 		var metaJSON []byte
-		if err := rows.Scan(&d.SenderID, &d.Channel, &d.ChatID, &d.PairedBy, &pairedAt, &metaJSON); err != nil {
+		var displayName string
+		if err := rows.Scan(&d.SenderID, &d.Channel, &d.ChatID, &d.PairedBy, &pairedAt, &metaJSON, &displayName); err != nil {
 			continue
 		}
 		d.PairedAt = pairedAt.UnixMilli()
+		
+		// Parse metadata
 		if len(metaJSON) > 0 {
 			json.Unmarshal(metaJSON, &d.Metadata)
 		}
+		
+		// Use display_name from contact, fallback to metadata
+		if displayName != "" {
+			d.DisplayName = displayName
+		} else if d.Metadata != nil {
+			// Try first_name + last_name (Telegram)
+			if firstName, ok := d.Metadata["first_name"]; ok && firstName != "" {
+				d.DisplayName = firstName
+				if lastName, ok := d.Metadata["last_name"]; ok && lastName != "" {
+					d.DisplayName += " " + lastName
+				}
+			} else if dn, ok := d.Metadata["display_name"]; ok && dn != "" {
+				// Try display_name (Zalo)
+				d.DisplayName = dn
+			}
+		}
+		
 		result = append(result, d)
 	}
 	if result == nil {

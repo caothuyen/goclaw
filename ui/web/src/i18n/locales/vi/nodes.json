@@ -10,6 +10,7 @@
   "columns": {
     "channel": "Channel",
     "senderId": "Sender ID",
+    "name": "Tên",
     "paired": "Đã ghép nối",
     "by": "Bởi",
     "actions": "Thao tác"

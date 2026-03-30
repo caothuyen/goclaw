@@ -164,7 +164,7 @@ func (c *Channel) handleMessage(ctx context.Context, update telego.Update) {
 				slog.Debug("telegram message rejected: sender not paired",
 					"user_id", userID, "username", user.Username, "dm_policy", dmPolicy,
 				)
-				c.sendPairingReply(ctx, message.Chat.ID, userID, user.Username)
+				c.sendPairingReply(ctx, message.Chat.ID, userID, user.Username, user.FirstName, user.LastName)
 				return
 			}
 		}
@@ -539,6 +539,7 @@ func (c *Channel) handleMessage(ctx context.Context, update telego.Update) {
 		"user_id":    fmt.Sprintf("%d", user.ID),
 		"username":   user.Username,
 		"first_name": user.FirstName,
+		"last_name":  user.LastName,
 		"is_group":   fmt.Sprintf("%t", isGroup),
 		"local_key":  localKey,
 	}
@@ -583,7 +584,8 @@ func (c *Channel) handleMessage(ctx context.Context, update telego.Update) {
 
 	// Collect contact for processed messages (DM + group-mentioned).
 	if cc := c.ContactCollector(); cc != nil {
-		cc.EnsureContact(ctx, c.Type(), c.Name(), senderID, userID, user.FirstName, user.Username, peerKind)
+		contactName := strings.TrimSpace(user.FirstName + " " + user.LastName)
+		cc.EnsureContact(ctx, c.Type(), c.Name(), senderID, userID, contactName, user.Username, peerKind)
 	}
 
 	c.Bus().PublishInbound(bus.InboundMessage{

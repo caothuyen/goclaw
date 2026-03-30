@@ -10,6 +10,7 @@
   "columns": {
     "channel": "Channel",
     "senderId": "Sender ID",
+    "name": "Name",
     "paired": "Paired",
     "by": "By",
     "actions": "Actions"

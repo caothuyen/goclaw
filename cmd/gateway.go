@@ -1055,7 +1055,7 @@ func runGateway() {
 	// Contact collector: auto-collect user info from channels with in-memory dedup cache.
 	var contactCollector *store.ContactCollector
 	if pgStores.Contacts != nil {
-		contactCollector = store.NewContactCollector(pgStores.Contacts, cache.NewInMemoryCache[bool]())
+		contactCollector = store.NewContactCollector(pgStores.Contacts, cache.NewInMemoryCache[string]())
 		channelMgr.SetContactCollector(contactCollector) // propagate to all channel handlers
 	}
 

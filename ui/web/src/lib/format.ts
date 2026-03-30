@@ -27,6 +27,24 @@ export function formatRelativeTime(date: string | Date): string {
   return formatDate(d);
 }
 
+export function formatTimeUntil(date: string | Date): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  const now = Date.now();
+  const diffMs = d.getTime() - now;
+  
+  if (diffMs <= 0) return "expired";
+  
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHr / 24);
+
+  if (diffSec < 60) return "in <1m";
+  if (diffMin < 60) return `in ${diffMin}m`;
+  if (diffHr < 24) return `in ${diffHr}h`;
+  return `in ${diffDay}d`;
+}
+
 export function formatTokens(count: number | null | undefined): string {
   if (count == null) return "0";
   if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;

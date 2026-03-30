@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { TableSkeleton } from "@/components/shared/loading-skeleton";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import { formatDate, formatRelativeTime } from "@/lib/format";
+import { formatDate, formatRelativeTime, formatTimeUntil } from "@/lib/format";
 import {
   useNodes,
   type PendingPairing,
@@ -62,12 +62,26 @@ export function NodesPage() {
                         <div className="flex items-center gap-2">
                           <Badge variant="outline">{p.channel}</Badge>
                           <span className="font-mono text-sm font-medium">{p.code}</span>
+                          {(p.metadata?.first_name || p.metadata?.display_name || p.metadata?.username) && (
+                            <>
+                              <span className="text-muted-foreground">|</span>
+                              <span className="font-mono text-sm font-medium">
+                                {p.metadata.first_name 
+                                  ? `${p.metadata.first_name}${p.metadata.last_name ? ' ' + p.metadata.last_name : ''}`
+                                  : p.metadata.display_name || `@${p.metadata.username}`
+                                }
+                              </span>
+                            </>
+                          )}
                         </div>
                         <div className="mt-1 text-xs text-muted-foreground">
                           {t("sender")}{p.sender_id}
                           {p.chat_id && ` | ${t("chat")}${p.chat_id}`}
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {t("common:created", "Created")}: {formatRelativeTime(new Date(p.created_at))}
                           {" | "}
-                          {formatRelativeTime(new Date(p.created_at))}
+                          {t("common:expires", "Expires")}: {formatTimeUntil(new Date(p.expires_at))}
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -105,6 +119,7 @@ export function NodesPage() {
                       <tr className="border-b bg-muted/50">
                         <th className="px-4 py-3 text-left font-medium">{t("columns.channel")}</th>
                         <th className="px-4 py-3 text-left font-medium">{t("columns.senderId")}</th>
+                        <th className="px-4 py-3 text-left font-medium">{t("columns.name")}</th>
                         <th className="px-4 py-3 text-left font-medium">{t("columns.paired")}</th>
                         <th className="px-4 py-3 text-left font-medium">{t("columns.by")}</th>
                         <th className="px-4 py-3 text-right font-medium">{t("columns.actions")}</th>
@@ -117,6 +132,7 @@ export function NodesPage() {
                             <Badge variant="outline">{d.channel}</Badge>
                           </td>
                           <td className="px-4 py-3 font-medium">{d.sender_id}</td>
+                          <td className="px-4 py-3 text-muted-foreground">{d.display_name || "-"}</td>
                           <td className="px-4 py-3 text-muted-foreground">
                             {formatDate(new Date(d.paired_at))}
                           </td>
