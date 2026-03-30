@@ -205,7 +205,7 @@ func (c *Channel) handleTextMessage(msg *zaloMessage) {
 
 	// Collect contact
 	if cc := c.ContactCollector(); cc != nil {
-		cc.EnsureContact(ctx, c.Type(), c.Name(), senderID, senderID, msg.From.DisplayName, msg.From.Username, "direct")
+		cc.EnsureContact(ctx, c.Type(), c.Name(), senderID, senderID, msg.From.DisplayName, msg.From.Username, "direct", "user")
 	}
 
 	// Send typing indicator
@@ -249,7 +249,7 @@ func (c *Channel) handleImageMessage(msg *zaloMessage) {
 
 	// Collect contact
 	if cc := c.ContactCollector(); cc != nil {
-		cc.EnsureContact(ctx, c.Type(), c.Name(), senderID, senderID, msg.From.DisplayName, msg.From.Username, "direct")
+		cc.EnsureContact(ctx, c.Type(), c.Name(), senderID, senderID, msg.From.DisplayName, msg.From.Username, "direct", "user")
 	}
 
 	// Send typing indicator
