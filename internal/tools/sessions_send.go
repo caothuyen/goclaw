@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -68,24 +69,17 @@ func (t *SessionsSendTool) Execute(ctx context.Context, args map[string]any) *Re
 		return ErrorResult("either session_key or label is required")
 	}
 
+	// Security: fail-closed when agentID missing
+	agentID := resolveAgentIDString(ctx)
+	if agentID == "" {
+		return ErrorResult("agent context required")
+	}
+
 	// Resolve by label if needed
 	if sessionKey == "" && label != "" {
-		// Get agent_key from current session key instead of UUID
-		agentKey := ""
-		currentSessionKey := ToolSandboxKeyFromCtx(ctx)
-		if currentSessionKey != "" {
-			// Parse agent_key from session_key format: agent:{agent_key}:{channel}:...
-			parts := strings.SplitN(currentSessionKey, ":", 3)
-			if len(parts) >= 2 {
-				agentKey = parts[1]
-			}
-		}
-		
-		sessions := t.sessions.List(ctx, agentKey)
+		sessions := t.sessions.List(ctx, agentID)
 		for _, s := range sessions {
-			// Check if label matches by loading session data
-			data := t.sessions.GetOrCreate(ctx, s.Key)
-			if data.Label == label {
+			if s.Label == label {
 				sessionKey = s.Key
 				break
 			}
@@ -96,43 +90,32 @@ func (t *SessionsSendTool) Execute(ctx context.Context, args map[string]any) *Re
 	}
 
 	// Security: validate target session belongs to same agent
-	// Get agent_key from current session key instead of UUID
-	agentKey := ""
-	currentSessionKey := ToolSandboxKeyFromCtx(ctx)
-	if currentSessionKey != "" {
-		// Parse agent_key from session_key format: agent:{agent_key}:{channel}:...
-		parts := strings.SplitN(currentSessionKey, ":", 3)
-		if len(parts) >= 2 {
-			agentKey = parts[1]
-		}
-	}
-	if agentKey != "" && !strings.HasPrefix(sessionKey, "agent:"+agentKey+":") {
+	if !strings.HasPrefix(sessionKey, "agent:"+agentID+":") {
 		return ErrorResult("access denied: target session belongs to a different agent")
 	}
 
-	// Publish as an inbound message (same mechanism as channels)
-	// Parse session key to extract channel and chat_id for proper routing
-	// Format: agent:{agent_key}:{channel}:{peer_kind}:{chat_id}
-	parts := strings.SplitN(sessionKey, ":", 5)
-	if len(parts) < 5 {
-		return ErrorResult(fmt.Sprintf("invalid session_key format: %s", sessionKey))
+	// Block self-send: agent should not send to its own current session
+	// to prevent re-processing loops (same pattern as message tool).
+	currentSession := ToolSandboxKeyFromCtx(ctx)
+	if currentSession != "" && sessionKey == currentSession {
+		return ErrorResult("cannot send to your own current session — your response is already delivered to it")
 	}
-	
-	targetChannel := parts[2]
-	targetPeerKind := parts[3]
-	targetChatID := parts[4]
-	
+
+	// Publish as an inbound message (same mechanism as channels)
 	t.msgBus.PublishInbound(bus.InboundMessage{
-		Channel:  targetChannel,
+		Channel:  "system",
 		SenderID: "session_send_tool",
-		ChatID:   targetChatID,
+		ChatID:   sessionKey,
 		Content:  message,
-		PeerKind: targetPeerKind,
+		PeerKind: "direct",
 		TenantID: store.TenantIDFromContext(ctx),
-		AgentID:  agentKey,
 	})
 
-	return SilentResult(fmt.Sprintf(`{"status":"accepted","session_key":"%s"}`, sessionKey))
+	out, _ := json.Marshal(map[string]any{
+		"status":      "accepted",
+		"session_key": sessionKey,
+	})
+	return SilentResult(string(out))
 }
 
 // ============================================================

@@ -23,7 +23,8 @@ func NewContactCollector(s ContactStore, c cache.Cache[string]) *ContactCollecto
 }
 
 // EnsureContact creates or refreshes a contact entry, skipping DB if recently seen with same name.
-func (c *ContactCollector) EnsureContact(ctx context.Context, channelType, channelInstance, senderID, userID, displayName, username, peerKind string) {
+// contactType: "user" (individual sender) or "group" (group chat entity).
+func (c *ContactCollector) EnsureContact(ctx context.Context, channelType, channelInstance, senderID, userID, displayName, username, peerKind, contactType string) {
 	key := channelType + ":" + senderID
 	
 	// Check cache: skip only if name hasn't changed
@@ -31,11 +32,19 @@ func (c *ContactCollector) EnsureContact(ctx context.Context, channelType, chann
 		return
 	}
 	
-	if err := c.store.UpsertContact(ctx, channelType, channelInstance, senderID, userID, displayName, username, peerKind); err != nil {
+	if contactType == "" {
+		contactType = "user"
+	}
+	if err := c.store.UpsertContact(ctx, channelType, channelInstance, senderID, userID, displayName, username, peerKind, contactType); err != nil {
 		slog.Warn("contact_collector.upsert_failed", "error", err, "channel", channelType, "sender", senderID)
 		return
 	}
 	
 	// Cache the new display_name
 	c.seen.Set(ctx, key, displayName, contactSeenTTL)
+}
+
+// ResolveTenantUserID delegates to the underlying ContactStore.
+func (c *ContactCollector) ResolveTenantUserID(ctx context.Context, channelType, senderID string) (string, error) {
+	return c.store.ResolveTenantUserID(ctx, channelType, senderID)
 }
