@@ -99,6 +99,43 @@ func processNormalMessage(
 
 	// Persist friendly names from channel metadata into session + user profile.
 	sessionMeta := extractSessionMetadata(msg, peerKind)
+	
+	displayNameFromMeta := ""
+	if sessionMeta != nil {
+		displayNameFromMeta = sessionMeta["display_name"]
+	}
+	slog.Info("session metadata check", 
+		"channel", msg.Channel, 
+		"sender_id", msg.SenderID, 
+		"has_meta", sessionMeta != nil, 
+		"display_name", displayNameFromMeta)
+	
+	// Fallback: if display_name is empty, try to get from existing contact
+	if (sessionMeta == nil || sessionMeta["display_name"] == "") && deps.ContactCollector != nil && msg.SenderID != "" {
+		senderNumericID := msg.SenderID
+		if idx := strings.IndexByte(senderNumericID, '|'); idx > 0 {
+			senderNumericID = senderNumericID[:idx]
+		}
+		channelType := deps.ChannelMgr.ChannelTypeForName(msg.Channel)
+		if channelType == "" {
+			channelType = msg.Channel
+		}
+		slog.Info("session metadata fallback: querying contact", 
+			"channel", msg.Channel, "channel_type", channelType, "sender_id", senderNumericID)
+		// Query contact to get display_name
+		if displayName := deps.ContactCollector.GetDisplayName(ctx, channelType, senderNumericID); displayName != "" {
+			slog.Info("session metadata fallback: got display_name from contact", 
+				"channel", msg.Channel, "sender_id", senderNumericID, "display_name", displayName)
+			if sessionMeta == nil {
+				sessionMeta = make(map[string]string)
+			}
+			sessionMeta["display_name"] = displayName
+		} else {
+			slog.Warn("session metadata fallback: no display_name found in contacts", 
+				"channel", msg.Channel, "channel_type", channelType, "sender_id", senderNumericID)
+		}
+	}
+	
 	if len(sessionMeta) > 0 {
 		deps.SessStore.SetSessionMetadata(ctx, sessionKey, sessionMeta)
 		if deps.AgentStore != nil {

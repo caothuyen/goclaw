@@ -48,3 +48,24 @@ func (c *ContactCollector) EnsureContact(ctx context.Context, channelType, chann
 func (c *ContactCollector) ResolveTenantUserID(ctx context.Context, channelType, senderID string) (string, error) {
 	return c.store.ResolveTenantUserID(ctx, channelType, senderID)
 }
+
+// GetDisplayName returns the cached or stored display_name for a contact.
+func (c *ContactCollector) GetDisplayName(ctx context.Context, channelType, senderID string) string {
+	key := channelType + ":" + senderID
+	
+	// Check cache first
+	if cachedName, ok := c.seen.Get(ctx, key); ok && cachedName != "" {
+		return cachedName
+	}
+	
+	// Fallback to DB query
+	if contacts, err := c.store.GetContactsBySenderIDs(ctx, []string{senderID}); err == nil {
+		if contact, ok := contacts[senderID]; ok && contact.DisplayName != nil && *contact.DisplayName != "" {
+			// Update cache
+			c.seen.Set(ctx, key, *contact.DisplayName, contactSeenTTL)
+			return *contact.DisplayName
+		}
+	}
+	
+	return ""
+}
