@@ -117,9 +117,9 @@ export function NodesPage() {
                   <table className="w-full min-w-[600px] text-sm">
                     <thead>
                       <tr className="border-b bg-muted/50">
+                        <th className="px-4 py-3 text-left font-medium">{t("columns.name")}</th>
                         <th className="px-4 py-3 text-left font-medium">{t("columns.channel")}</th>
                         <th className="px-4 py-3 text-left font-medium">{t("columns.senderId")}</th>
-                        <th className="px-4 py-3 text-left font-medium">{t("columns.name")}</th>
                         <th className="px-4 py-3 text-left font-medium">{t("columns.session")}</th>
                         <th className="px-4 py-3 text-left font-medium">{t("columns.paired")}</th>
                         <th className="px-4 py-3 text-left font-medium">{t("columns.by")}</th>
@@ -129,11 +129,11 @@ export function NodesPage() {
                     <tbody>
                       {pairedDevices.map((d: PairedDevice) => (
                         <tr key={`${d.channel}-${d.sender_id}`} className="border-b last:border-0 hover:bg-muted/30">
+                          <td className="px-4 py-3 font-medium">{d.display_name || "-"}</td>
                           <td className="px-4 py-3">
                             <Badge variant="outline">{d.channel}</Badge>
                           </td>
                           <td className="px-4 py-3 font-medium">{d.sender_id}</td>
-                          <td className="px-4 py-3 text-muted-foreground">{d.display_name || "-"}</td>
                           <td className="px-4 py-3">
                             {d.session_key ? (
                               <a
