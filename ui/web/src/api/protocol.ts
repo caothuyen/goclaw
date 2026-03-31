@@ -107,6 +107,7 @@ export const Methods = {
   PAIRING_DENY: "device.pair.deny",
   PAIRING_LIST: "device.pair.list",
   PAIRING_REVOKE: "device.pair.revoke",
+  PAIRING_UPDATE_AGENT: "device.pair.update-agent",
 
   BROWSER_PAIRING_STATUS: "browser.pairing.status",
 

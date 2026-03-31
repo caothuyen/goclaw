@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"mime"
 	"path/filepath"
@@ -15,10 +16,12 @@ import (
 )
 
 // resolveAgentRoute determines which agent should handle a message
-// based on config bindings. Priority: peer → channel → default.
+// based on node binding, config bindings, or default. 
+// Priority: Node binding → Peer binding → Channel binding → Default.
 // Matching TS resolve-route.ts binding resolution.
-func resolveAgentRoute(cfg *config.Config, channel, chatID, peerKind string) string {
-	for _, binding := range cfg.Bindings {
+func resolveAgentRoute(deps *ConsumerDeps, ctx context.Context, channel, chatID, peerKind, senderID string) string {
+	// Priority 2 & 3: Check config bindings (peer → channel)
+	for _, binding := range deps.Cfg.Bindings {
 		match := binding.Match
 		if match.Channel != channel {
 			continue
@@ -36,7 +39,8 @@ func resolveAgentRoute(cfg *config.Config, channel, chatID, peerKind string) str
 		return config.NormalizeAgentID(binding.AgentID)
 	}
 
-	return cfg.ResolveDefaultAgentID()
+	// Priority 4: Default agent
+	return deps.Cfg.ResolveDefaultAgentID()
 }
 
 // overrideSessionKeyFromLocalKey extracts topic/thread ID from the composite

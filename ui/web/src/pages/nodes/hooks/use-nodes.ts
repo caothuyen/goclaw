@@ -27,6 +27,7 @@ export interface PairedDevice {
   paired_at: number;
   paired_by: string;
   display_name?: string;
+  agent_id?: string;
   session_key?: string;
 }
 
@@ -114,5 +115,13 @@ export function useNodes() {
     [ws, load],
   );
 
-  return { pendingPairings, pairedDevices, loading, refresh: load, approvePairing, denyPairing, revokePairing };
+  const updateAgent = useCallback(
+    async (senderId: string, channel: string, agentId: string) => {
+      await ws.call(Methods.PAIRING_UPDATE_AGENT, { senderId, channel, agentId });
+      load();
+    },
+    [ws, load],
+  );
+
+  return { pendingPairings, pairedDevices, loading, refresh: load, approvePairing, denyPairing, revokePairing, updateAgent };
 }

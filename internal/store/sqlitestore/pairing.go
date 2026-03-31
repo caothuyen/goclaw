@@ -204,7 +204,7 @@ func (s *SQLitePairingStore) ListPaired(ctx context.Context) []store.PairedDevic
 	s.db.ExecContext(ctx, "DELETE FROM paired_devices WHERE expires_at IS NOT NULL AND expires_at < ?", now)
 
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT sender_id, channel, chat_id, paired_by, paired_at, COALESCE(metadata, '{}')
+		`SELECT sender_id, channel, chat_id, paired_by, paired_at, COALESCE(metadata, '{}'), COALESCE(agent_id, '')
 		 FROM paired_devices WHERE tenant_id = ? ORDER BY paired_at DESC`, tid)
 	if err != nil {
 		return nil
@@ -216,11 +216,13 @@ func (s *SQLitePairingStore) ListPaired(ctx context.Context) []store.PairedDevic
 		var d store.PairedDeviceData
 		var pairedAtStr string
 		var metaJSON []byte
-		if err := rows.Scan(&d.SenderID, &d.Channel, &d.ChatID, &d.PairedBy, &pairedAtStr, &metaJSON); err != nil {
+		var agentID string
+		if err := rows.Scan(&d.SenderID, &d.Channel, &d.ChatID, &d.PairedBy, &pairedAtStr, &metaJSON, &agentID); err != nil {
 			slog.Warn("pairing: scan paired error", "error", err)
 			continue
 		}
 		d.PairedAt = parseTimeToMillis(pairedAtStr)
+		d.AgentID = agentID
 		if len(metaJSON) > 0 {
 			json.Unmarshal(metaJSON, &d.Metadata)
 		}
@@ -257,6 +259,48 @@ func parseTimeToMillis(s string) int64 {
 	}
 	slog.Warn("pairing: failed to parse time", "value", s)
 	return 0
+}
+
+func (s *SQLitePairingStore) UpdatePairedDeviceAgent(ctx context.Context, senderID, channel, agentID string) error {
+	tid := tenantIDForInsert(ctx)
+	
+	// Empty string means clear agent_id (use NULL)
+	var agentIDPtr *string
+	if agentID != "" {
+		agentIDPtr = &agentID
+	}
+	
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE paired_devices SET agent_id = ? WHERE sender_id = ? AND channel = ? AND tenant_id = ?`,
+		agentIDPtr, senderID, channel, tid)
+	return err
+}
+
+func (s *SQLitePairingStore) GetPairedDevice(ctx context.Context, senderID, channel string) (*store.PairedDeviceData, error) {
+	tid := tenantIDForInsert(ctx)
+	
+	var d store.PairedDeviceData
+	var pairedAtStr string
+	var metaJSON []byte
+	var agentID string
+	
+	err := s.db.QueryRowContext(ctx,
+		`SELECT sender_id, channel, chat_id, paired_by, paired_at, COALESCE(metadata, '{}'), COALESCE(agent_id, '')
+		 FROM paired_devices WHERE sender_id = ? AND channel = ? AND tenant_id = ?`,
+		senderID, channel, tid).Scan(&d.SenderID, &d.Channel, &d.ChatID, &d.PairedBy, &pairedAtStr, &metaJSON, &agentID)
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	d.PairedAt = parseTimeToMillis(pairedAtStr)
+	d.AgentID = agentID
+	
+	if len(metaJSON) > 0 {
+		json.Unmarshal(metaJSON, &d.Metadata)
+	}
+	
+	return &d, nil
 }
 
 func generatePairingCode() string {

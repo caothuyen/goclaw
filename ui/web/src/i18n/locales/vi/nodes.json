@@ -11,6 +11,8 @@
     "channel": "Channel",
     "senderId": "Sender ID",
     "name": "Tên",
+    "agent": "Agent",
+    "defaultAgent": "Mặc định (từ channel)",
     "session": "Phiên",
     "paired": "Đã ghép nối",
     "by": "Bởi",

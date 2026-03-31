@@ -469,9 +469,10 @@ func handleResetCommand(
 		return false
 	}
 
+	ctx := store.WithTenantID(context.Background(), msg.TenantID)
 	agentID := msg.AgentID
 	if agentID == "" {
-		agentID = resolveAgentRoute(deps.Cfg, msg.Channel, msg.ChatID, msg.PeerKind)
+		agentID = resolveAgentRoute(deps, ctx, msg.Channel, msg.ChatID, msg.PeerKind, msg.SenderID)
 	}
 	peerKind := msg.PeerKind
 	if peerKind == "" {
@@ -485,7 +486,6 @@ func handleResetCommand(
 			sessionKey = sessions.BuildGroupTopicSessionKey(agentID, msg.Channel, msg.ChatID, topicID)
 		}
 	}
-	ctx := store.WithTenantID(context.Background(), msg.TenantID)
 	deps.SessStore.Reset(ctx, sessionKey)
 	deps.SessStore.Save(ctx, sessionKey)
 	providers.ResetCLISession("", sessionKey)
@@ -505,9 +505,10 @@ func handleStopCommand(
 		return false
 	}
 
+	ctx := store.WithTenantID(context.Background(), msg.TenantID)
 	agentID := msg.AgentID
 	if agentID == "" {
-		agentID = resolveAgentRoute(deps.Cfg, msg.Channel, msg.ChatID, msg.PeerKind)
+		agentID = resolveAgentRoute(deps, ctx, msg.Channel, msg.ChatID, msg.PeerKind, msg.SenderID)
 	}
 	peerKind := msg.PeerKind
 	if peerKind == "" {

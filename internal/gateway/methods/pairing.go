@@ -47,6 +47,7 @@ func (m *PairingMethods) Register(router *gateway.MethodRouter) {
 	router.Register(protocol.MethodPairingList, m.handleList)
 	router.Register(protocol.MethodPairingRevoke, m.handleRevoke)
 	router.Register(protocol.MethodBrowserPairingStatus, m.handleBrowserPairingStatus)
+	router.Register(protocol.MethodPairingUpdateAgent, m.handleUpdateAgent)
 }
 
 func (m *PairingMethods) handleRequest(ctx context.Context, client *gateway.Client, req *protocol.RequestFrame) {
@@ -246,5 +247,41 @@ func (m *PairingMethods) handleBrowserPairingStatus(ctx context.Context, client 
 
 	client.SendResponse(protocol.NewOKResponse(req.ID, map[string]any{
 		"status": "expired",
+	}))
+}
+
+func (m *PairingMethods) handleUpdateAgent(ctx context.Context, client *gateway.Client, req *protocol.RequestFrame) {
+	locale := store.LocaleFromContext(ctx)
+	var params struct {
+		SenderID string `json:"senderId"`
+		Channel  string `json:"channel"`
+		AgentID  string `json:"agentId"`
+	}
+	if req.Params != nil {
+		json.Unmarshal(req.Params, &params)
+	}
+
+	if params.SenderID == "" || params.Channel == "" {
+		client.SendResponse(protocol.NewErrorResponse(req.ID, protocol.ErrInvalidRequest, i18n.T(locale, i18n.MsgSenderChannelRequired)))
+		return
+	}
+
+	// Authorization: Only allow updating own paired device
+	// (In single-user/self-hosted mode, this is always allowed)
+	// For multi-user systems, add proper ownership check here
+	// Example: if client.UserID != "" && client.UserID != params.SenderID { ... }
+
+	if err := m.service.UpdatePairedDeviceAgent(ctx, params.SenderID, params.Channel, params.AgentID); err != nil {
+		client.SendResponse(protocol.NewErrorResponse(req.ID, protocol.ErrNotFound, err.Error()))
+		return
+	}
+
+	if m.broadcaster != nil {
+		m.broadcaster(*protocol.NewEvent(protocol.EventDevicePairRes, map[string]any{"action": "agent_updated"}))
+	}
+
+	emitAudit(m.msgBus, client, "pairing.agent_updated", "pairing", params.SenderID)
+	client.SendResponse(protocol.NewOKResponse(req.ID, map[string]any{
+		"updated": true,
 	}))
 }

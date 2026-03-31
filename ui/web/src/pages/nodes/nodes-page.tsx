@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link as LinkIcon, RefreshCw, Check, X, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,10 @@ import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { TableSkeleton } from "@/components/shared/loading-skeleton";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDate, formatRelativeTime, formatTimeUntil } from "@/lib/format";
+import { useWs } from "@/hooks/use-ws";
+import { Methods } from "@/api/protocol";
 import {
   useNodes,
   type PendingPairing,
@@ -18,13 +21,28 @@ import { useDeferredLoading } from "@/hooks/use-deferred-loading";
 
 export function NodesPage() {
   const { t } = useTranslation("nodes");
-  const { pendingPairings, pairedDevices, loading, refresh, approvePairing, denyPairing, revokePairing } = useNodes();
+  const ws = useWs();
+  const { pendingPairings, pairedDevices, loading, refresh, approvePairing, denyPairing, revokePairing, updateAgent } = useNodes();
   const spinning = useMinLoading(loading);
   const isEmpty = pendingPairings.length === 0 && pairedDevices.length === 0;
   const showSkeleton = useDeferredLoading(loading && isEmpty);
   const [revokeTarget, setRevokeTarget] = useState<PairedDevice | null>(null);
   const [approveTarget, setApproveTarget] = useState<PendingPairing | null>(null);
   const [denyTarget, setDenyTarget] = useState<PendingPairing | null>(null);
+  const [agents, setAgents] = useState<Array<{ id: string; name: string }>>([]);
+
+  // Fetch agents list
+  useEffect(() => {
+    const fetchAgents = async () => {
+      try {
+        const res = await ws.call<{ agents: Array<{ id: string; name: string }> }>(Methods.AGENTS_LIST);
+        setAgents(res.agents ?? []);
+      } catch {
+        // ignore
+      }
+    };
+    fetchAgents();
+  }, [ws]);
 
   return (
     <div className="p-4 sm:p-6 pb-10">
@@ -120,6 +138,7 @@ export function NodesPage() {
                         <th className="px-4 py-3 text-left font-medium">{t("columns.name")}</th>
                         <th className="px-4 py-3 text-left font-medium">{t("columns.channel")}</th>
                         <th className="px-4 py-3 text-left font-medium">{t("columns.senderId")}</th>
+                        <th className="px-4 py-3 text-left font-medium">{t("columns.agent")}</th>
                         <th className="px-4 py-3 text-left font-medium">{t("columns.session")}</th>
                         <th className="px-4 py-3 text-left font-medium">{t("columns.paired")}</th>
                         <th className="px-4 py-3 text-left font-medium">{t("columns.by")}</th>
@@ -134,6 +153,24 @@ export function NodesPage() {
                             <Badge variant="outline">{d.channel}</Badge>
                           </td>
                           <td className="px-4 py-3 font-medium">{d.sender_id}</td>
+                          <td className="px-4 py-3">
+                            <Select
+                              value={d.agent_id || "__default__"}
+                              onValueChange={(value) => updateAgent(d.sender_id, d.channel, value === "__default__" ? "" : value)}
+                            >
+                              <SelectTrigger className="h-8 w-[180px]">
+                                <SelectValue placeholder={t("columns.defaultAgent")} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__default__">{t("columns.defaultAgent")}</SelectItem>
+                                {agents.map((agent) => (
+                                  <SelectItem key={agent.id} value={agent.id}>
+                                    {agent.name || agent.id}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </td>
                           <td className="px-4 py-3">
                             {d.session_key ? (
                               <a

@@ -12,6 +12,7 @@ import (
 	"github.com/nextlevelbuilder/goclaw/internal/agent"
 	"github.com/nextlevelbuilder/goclaw/internal/bus"
 	"github.com/nextlevelbuilder/goclaw/internal/channels/telegram/voiceguard"
+	"github.com/nextlevelbuilder/goclaw/internal/config"
 	"github.com/nextlevelbuilder/goclaw/internal/i18n"
 	"github.com/nextlevelbuilder/goclaw/internal/scheduler"
 	"github.com/nextlevelbuilder/goclaw/internal/sessions"
@@ -35,15 +36,36 @@ func processNormalMessage(
 	}
 
 	// Determine target agent via bindings or explicit AgentID
+	// Priority: Paired device binding > msg.AgentID > config bindings > default
 	agentID := msg.AgentID
-	if agentID == "" {
-		agentID = resolveAgentRoute(deps.Cfg, msg.Channel, msg.ChatID, msg.PeerKind)
+	
+	// Always check paired device binding first (highest priority)
+	if deps.PairingStore != nil && msg.SenderID != "" {
+		pd, err := deps.PairingStore.GetPairedDevice(ctx, msg.SenderID, msg.Channel)
+		if err == nil && pd != nil && pd.AgentID != "" {
+			slog.Info("consumer: using paired device agent binding", "sender", msg.SenderID, "channel", msg.Channel, "agent", pd.AgentID)
+			agentID = config.NormalizeAgentID(pd.AgentID)
+			goto resolved
+		}
 	}
+	
+	// If no paired device binding, use msg.AgentID or resolve from config
+	if agentID == "" {
+		agentID = resolveAgentRoute(deps, ctx, msg.Channel, msg.ChatID, msg.PeerKind, msg.SenderID)
+	}
+	
+resolved:
 
 	agentLoop, err := deps.Agents.Get(ctx, agentID)
 	if err != nil {
-		slog.Warn("inbound: agent not found", "agent", agentID, "channel", msg.Channel)
-		return
+		slog.Warn("inbound: agent not found, falling back to default", "agent", agentID, "channel", msg.Channel)
+		// Fallback to default agent if specified agent doesn't exist
+		agentID = deps.Cfg.ResolveDefaultAgentID()
+		agentLoop, err = deps.Agents.Get(ctx, agentID)
+		if err != nil {
+			slog.Error("inbound: default agent not found", "agent", agentID)
+			return
+		}
 	}
 
 	// Build session key based on scope config (matching TS buildAgentPeerSessionKey).

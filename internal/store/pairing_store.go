@@ -22,6 +22,7 @@ type PairedDeviceData struct {
 	PairedAt    int64             `json:"paired_at"`
 	PairedBy    string            `json:"paired_by"`
 	DisplayName string            `json:"display_name,omitempty"`
+	AgentID     string            `json:"agent_id,omitempty"`
 	Metadata    map[string]string `json:"metadata,omitempty"`
 }
 
@@ -34,4 +35,6 @@ type PairingStore interface {
 	IsPaired(ctx context.Context, senderID, channel string) (bool, error)
 	ListPending(ctx context.Context) []PairingRequestData
 	ListPaired(ctx context.Context) []PairedDeviceData
+	GetPairedDevice(ctx context.Context, senderID, channel string) (*PairedDeviceData, error)
+	UpdatePairedDeviceAgent(ctx context.Context, senderID, channel, agentID string) error
 }

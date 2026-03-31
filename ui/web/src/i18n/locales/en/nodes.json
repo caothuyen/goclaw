@@ -11,6 +11,8 @@
     "channel": "Channel",
     "senderId": "Sender ID",
     "name": "Name",
+    "agent": "Agent",
+    "defaultAgent": "Default (from channel)",
     "session": "Session",
     "paired": "Paired",
     "by": "By",

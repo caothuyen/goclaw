@@ -207,7 +207,8 @@ func (s *PGPairingStore) ListPaired(ctx context.Context) []store.PairedDeviceDat
 
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT pd.sender_id, pd.channel, pd.chat_id, pd.paired_by, pd.paired_at, 
-		        COALESCE(pd.metadata, '{}'), COALESCE(cc.display_name, '')
+		        COALESCE(pd.metadata, '{}'), COALESCE(cc.display_name, ''), 
+		        COALESCE(pd.agent_id, '')
 		 FROM paired_devices pd
 		 LEFT JOIN channel_contacts cc ON pd.sender_id = cc.sender_id 
 		                                AND pd.channel = cc.channel_type
@@ -225,10 +226,12 @@ func (s *PGPairingStore) ListPaired(ctx context.Context) []store.PairedDeviceDat
 		var pairedAt time.Time
 		var metaJSON []byte
 		var displayName string
-		if err := rows.Scan(&d.SenderID, &d.Channel, &d.ChatID, &d.PairedBy, &pairedAt, &metaJSON, &displayName); err != nil {
+		var agentID string
+		if err := rows.Scan(&d.SenderID, &d.Channel, &d.ChatID, &d.PairedBy, &pairedAt, &metaJSON, &displayName, &agentID); err != nil {
 			continue
 		}
 		d.PairedAt = pairedAt.UnixMilli()
+		d.AgentID = agentID
 		
 		// Parse metadata
 		if len(metaJSON) > 0 {
@@ -257,6 +260,70 @@ func (s *PGPairingStore) ListPaired(ctx context.Context) []store.PairedDeviceDat
 		return []store.PairedDeviceData{}
 	}
 	return result
+}
+
+func (s *PGPairingStore) UpdatePairedDeviceAgent(ctx context.Context, senderID, channel, agentID string) error {
+	tid := tenantIDForInsert(ctx)
+	
+	// Empty string means clear agent_id (use NULL)
+	var agentIDPtr *string
+	if agentID != "" {
+		agentIDPtr = &agentID
+	}
+	
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE paired_devices SET agent_id = $1 WHERE sender_id = $2 AND channel = $3 AND tenant_id = $4`,
+		agentIDPtr, senderID, channel, tid)
+	return err
+}
+
+func (s *PGPairingStore) GetPairedDevice(ctx context.Context, senderID, channel string) (*store.PairedDeviceData, error) {
+	tid := tenantIDForInsert(ctx)
+	
+	var d store.PairedDeviceData
+	var pairedAt time.Time
+	var metaJSON []byte
+	var displayName string
+	var agentID string
+	
+	err := s.db.QueryRowContext(ctx,
+		`SELECT pd.sender_id, pd.channel, pd.chat_id, pd.paired_by, pd.paired_at, 
+		        COALESCE(pd.metadata, '{}'), COALESCE(cc.display_name, ''), 
+		        COALESCE(pd.agent_id, '')
+		 FROM paired_devices pd
+		 LEFT JOIN channel_contacts cc ON pd.sender_id = cc.sender_id 
+		                                AND pd.channel = cc.channel_type
+		                                AND pd.tenant_id = cc.tenant_id
+		 WHERE pd.sender_id = $1 AND pd.channel = $2 AND pd.tenant_id = $3`,
+		senderID, channel, tid).Scan(&d.SenderID, &d.Channel, &d.ChatID, &d.PairedBy, &pairedAt, &metaJSON, &displayName, &agentID)
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	d.PairedAt = pairedAt.UnixMilli()
+	d.AgentID = agentID
+	
+	// Parse metadata
+	if len(metaJSON) > 0 {
+		json.Unmarshal(metaJSON, &d.Metadata)
+	}
+	
+	// Use display_name from contact, fallback to metadata
+	if displayName != "" {
+		d.DisplayName = displayName
+	} else if d.Metadata != nil {
+		if firstName, ok := d.Metadata["first_name"]; ok && firstName != "" {
+			d.DisplayName = firstName
+			if lastName, ok := d.Metadata["last_name"]; ok && lastName != "" {
+				d.DisplayName += " " + lastName
+			}
+		} else if dn, ok := d.Metadata["display_name"]; ok && dn != "" {
+			d.DisplayName = dn
+		}
+	}
+	
+	return &d, nil
 }
 
 func generatePairingCode() string {
