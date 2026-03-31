@@ -146,6 +146,11 @@ function SessionRow({
           {session.channel && session.channel !== "ws" && (
             <Badge variant="secondary" className="text-[10px] px-1 py-0">{session.channel}</Badge>
           )}
+          {session.is_paired === false && (
+            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+              {t("status.revoked")}
+            </Badge>
+          )}
         </div>
       </td>
       <td className="px-4 py-3">

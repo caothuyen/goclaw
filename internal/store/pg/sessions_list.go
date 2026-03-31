@@ -200,7 +200,12 @@ func (s *PGSessionStore) ListPagedRich(ctx context.Context, opts store.SessionLi
 		COALESCE(a.display_name, ''),
 		octet_length(s.messages::text) / 4 + 12000,
 		COALESCE(a.context_window, 200000), -- config.DefaultContextWindow
-		s.compaction_count`
+		s.compaction_count,
+		CASE 
+			WHEN s.session_key ~ '^agent:[^:]+:(telegram-bot|zalo-bot|discord|slack|whatsapp|signal|feishu|line):(direct|group):[^:]+$' THEN
+				EXISTS(SELECT 1 FROM paired_devices pd WHERE pd.sender_id = (regexp_match(s.session_key, '^agent:[^:]+:[^:]+:(?:direct|group):(.+)$'))[1])
+			ELSE NULL
+		END`
 
 	nextIdx := len(whereArgs) + 1
 	selectQ := fmt.Sprintf(`SELECT %s
@@ -225,9 +230,10 @@ func (s *PGSessionStore) ListPagedRich(ctx context.Context, opts store.SessionLi
 		var inputTokens, outputTokens int64
 		var agentName string
 		var estimatedTokens, contextWindow, compactionCount int
+		var isPaired *bool
 		if err := rows.Scan(&key, &msgCount, &createdAt, &updatedAt, &label, &channel, &userID, &metaJSON,
 			&model, &provider, &inputTokens, &outputTokens, &agentName,
-			&estimatedTokens, &contextWindow, &compactionCount); err != nil {
+			&estimatedTokens, &contextWindow, &compactionCount, &isPaired); err != nil {
 			continue
 		}
 		var meta map[string]string
@@ -253,6 +259,7 @@ func (s *PGSessionStore) ListPagedRich(ctx context.Context, opts store.SessionLi
 			EstimatedTokens: estimatedTokens,
 			ContextWindow:   contextWindow,
 			CompactionCount: compactionCount,
+			IsPaired:        isPaired,
 		})
 	}
 	if result == nil {

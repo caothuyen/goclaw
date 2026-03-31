@@ -16,6 +16,9 @@
   "contextBar": {
     "compacted": "已压缩 {{count}} 次"
   },
+  "status": {
+    "revoked": "已撤销"
+  },
   "detail": {
     "reset": "重置",
     "delete": "删除",

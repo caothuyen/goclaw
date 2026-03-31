@@ -4,6 +4,9 @@
   "newChat": "New Chat",
   "openSessions": "Open sessions",
   "readOnly": "Read-only — this session belongs to another user",
+  "status": {
+    "revoked": "Revoked"
+  },
   "empty": {
     "title": "Start a conversation",
     "description": "Send a message to begin chatting with the agent."

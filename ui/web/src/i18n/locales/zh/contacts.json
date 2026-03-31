@@ -49,6 +49,9 @@
     "user": "用户",
     "group": "群组"
   },
+  "status": {
+    "revoked": "已撤销"
+  },
   "filters": {
     "allChannels": "所有Channel",
     "allTypes": "所有类型",

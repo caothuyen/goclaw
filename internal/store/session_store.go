@@ -78,6 +78,7 @@ type SessionInfoRich struct {
 	EstimatedTokens int    `json:"estimatedTokens,omitempty"` // estimated current context tokens (messages bytes/4 + 12k system prompt)
 	ContextWindow   int    `json:"contextWindow,omitempty"`   // agent's context window size
 	CompactionCount int    `json:"compactionCount,omitempty"` // number of compactions performed
+	IsPaired        *bool  `json:"is_paired,omitempty"`       // true if paired device exists, false if revoked, nil if no sender_id
 }
 
 // SessionListRichResult is the paginated result of ListPagedRich.

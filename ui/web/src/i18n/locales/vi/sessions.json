@@ -16,6 +16,9 @@
   "contextBar": {
     "compacted": "Đã nén {{count}} lần"
   },
+  "status": {
+    "revoked": "Đã thu hồi"
+  },
   "detail": {
     "reset": "Đặt lại",
     "delete": "Xóa",

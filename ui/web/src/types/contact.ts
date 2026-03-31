@@ -23,4 +23,5 @@ export interface ChannelContact {
   merged_id?: string;
   first_seen_at: string;
   last_seen_at: string;
+  is_paired?: boolean; // Whether this contact has an active paired device
 }

@@ -36,6 +36,7 @@ export function useSessions(opts: UseSessionsOptions = {}) {
     },
     placeholderData: (prev) => prev,
     enabled: connected,
+    refetchOnMount: "always", // Always refetch when component mounts
   });
 
   const sessions = data?.sessions ?? [];

@@ -49,6 +49,9 @@
     "user": "Người dùng",
     "group": "Nhóm"
   },
+  "status": {
+    "revoked": "Đã thu hồi"
+  },
   "filters": {
     "allChannels": "Tất cả Channel",
     "allTypes": "Tất cả loại",

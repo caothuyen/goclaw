@@ -17,6 +17,7 @@ export interface SessionInfo {
   estimatedTokens?: number;
   contextWindow?: number;
   compactionCount?: number;
+  is_paired?: boolean; // true if paired device exists, false if revoked, undefined if no sender_id
 }
 
 export interface SessionPreview {

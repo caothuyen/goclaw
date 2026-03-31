@@ -16,6 +16,9 @@
   "contextBar": {
     "compacted": "Compacted {{count}} time(s)"
   },
+  "status": {
+    "revoked": "Revoked"
+  },
   "detail": {
     "reset": "Reset",
     "delete": "Delete",

@@ -244,7 +244,16 @@ export function ContactsPage() {
                         : <span className="text-muted-foreground">—</span>
                       }
                     </td>
-                    <td className="px-3 py-2.5 font-mono text-xs">{c.sender_id}</td>
+                    <td className="px-3 py-2.5 font-mono text-xs">
+                      <div className="flex items-center gap-2">
+                        <span>{c.sender_id}</span>
+                        {c.is_paired === false && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                            {t("status.revoked")}
+                          </Badge>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-3 py-2.5">
                       <Badge variant="outline" className="text-[11px]">{c.channel_type}</Badge>
                     </td>

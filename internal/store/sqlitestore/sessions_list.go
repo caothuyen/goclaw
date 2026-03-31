@@ -185,7 +185,19 @@ func (s *SQLiteSessionStore) ListPagedRich(ctx context.Context, opts store.Sessi
 		COALESCE(a.display_name, ''),
 		length(s.messages) / 4 + 12000,
 		COALESCE(a.context_window, 200000),
-		s.compaction_count`
+		s.compaction_count,
+		CASE 
+			WHEN (s.session_key LIKE 'agent:%:telegram-bot:direct:%' OR s.session_key LIKE 'agent:%:telegram-bot:group:%' OR
+			      s.session_key LIKE 'agent:%:zalo-bot:direct:%' OR s.session_key LIKE 'agent:%:zalo-bot:group:%' OR
+			      s.session_key LIKE 'agent:%:discord:direct:%' OR s.session_key LIKE 'agent:%:discord:group:%' OR
+			      s.session_key LIKE 'agent:%:slack:direct:%' OR s.session_key LIKE 'agent:%:slack:group:%' OR
+			      s.session_key LIKE 'agent:%:whatsapp:direct:%' OR s.session_key LIKE 'agent:%:whatsapp:group:%' OR
+			      s.session_key LIKE 'agent:%:signal:direct:%' OR s.session_key LIKE 'agent:%:signal:group:%' OR
+			      s.session_key LIKE 'agent:%:feishu:direct:%' OR s.session_key LIKE 'agent:%:feishu:group:%' OR
+			      s.session_key LIKE 'agent:%:line:direct:%' OR s.session_key LIKE 'agent:%:line:group:%') THEN
+				EXISTS(SELECT 1 FROM paired_devices pd WHERE pd.sender_id = substr(s.session_key, instr(s.session_key, ':', instr(s.session_key, ':', instr(s.session_key, ':', instr(s.session_key, ':') + 1) + 1) + 1) + 1))
+			ELSE NULL
+		END`
 
 	selectQ := fmt.Sprintf(`SELECT %s
 		FROM sessions s LEFT JOIN agents a ON s.agent_id = a.id
@@ -209,9 +221,10 @@ func (s *SQLiteSessionStore) ListPagedRich(ctx context.Context, opts store.Sessi
 		var inputTokens, outputTokens int64
 		var agentName string
 		var estimatedTokens, contextWindow, compactionCount int
+		var isPaired *bool
 		if err := rows.Scan(&key, &msgCount, stCreated, stUpdated, &label, &channel, &userID, &metaJSON,
 			&model, &provider, &inputTokens, &outputTokens, &agentName,
-			&estimatedTokens, &contextWindow, &compactionCount); err != nil {
+			&estimatedTokens, &contextWindow, &compactionCount, &isPaired); err != nil {
 			continue
 		}
 		var meta map[string]string
@@ -237,6 +250,7 @@ func (s *SQLiteSessionStore) ListPagedRich(ctx context.Context, opts store.Sessi
 			EstimatedTokens: estimatedTokens,
 			ContextWindow:   contextWindow,
 			CompactionCount: compactionCount,
+			IsPaired:        isPaired,
 		})
 	}
 	if result == nil {

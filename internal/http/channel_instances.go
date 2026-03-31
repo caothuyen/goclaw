@@ -23,12 +23,13 @@ type ChannelInstancesHandler struct {
 	configPermStore store.ConfigPermissionStore
 	contactStore    store.ContactStore
 	tenantStore     store.TenantStore
+	pairingStore    store.PairingStore
 	msgBus          *bus.MessageBus
 }
 
 // NewChannelInstancesHandler creates a handler for channel instance management endpoints.
-func NewChannelInstancesHandler(s store.ChannelInstanceStore, agentStore store.AgentStore, configPermStore store.ConfigPermissionStore, contactStore store.ContactStore, tenantStore store.TenantStore, msgBus *bus.MessageBus) *ChannelInstancesHandler {
-	return &ChannelInstancesHandler{store: s, agentStore: agentStore, configPermStore: configPermStore, contactStore: contactStore, tenantStore: tenantStore, msgBus: msgBus}
+func NewChannelInstancesHandler(s store.ChannelInstanceStore, agentStore store.AgentStore, configPermStore store.ConfigPermissionStore, contactStore store.ContactStore, tenantStore store.TenantStore, pairingStore store.PairingStore, msgBus *bus.MessageBus) *ChannelInstancesHandler {
+	return &ChannelInstancesHandler{store: s, agentStore: agentStore, configPermStore: configPermStore, contactStore: contactStore, tenantStore: tenantStore, pairingStore: pairingStore, msgBus: msgBus}
 }
 
 // RegisterRoutes registers all channel instance routes on the given mux.
@@ -506,8 +507,42 @@ func (h *ChannelInstancesHandler) handleListContacts(w http.ResponseWriter, r *h
 		slog.Warn("contacts.count", "error", countErr)
 	}
 
+	// Build paired devices map for is_paired check
+	var pairedMap map[string]bool
+	if h.pairingStore != nil && len(contacts) > 0 {
+		pairedDevices := h.pairingStore.ListPaired(r.Context())
+		pairedMap = make(map[string]bool, len(pairedDevices))
+		for _, pd := range pairedDevices {
+			// Store by sender_id only (channel mismatch issue: zalo_oa vs zalo-bot)
+			pairedMap[pd.SenderID] = true
+		}
+	}
+
+	// Add is_paired to each contact
+	contactsWithPaired := make([]map[string]any, len(contacts))
+	for i, c := range contacts {
+		isPaired := false
+		if pairedMap != nil {
+			// Check by sender_id only
+			isPaired = pairedMap[c.SenderID]
+		}
+		
+		contactsWithPaired[i] = map[string]any{
+			"sender_id":    c.SenderID,
+			"channel_type": c.ChannelType,
+			"display_name": c.DisplayName,
+			"username":     c.Username,
+			"avatar_url":   c.AvatarURL,
+			"peer_kind":    c.PeerKind,
+			"contact_type": c.ContactType,
+			"first_seen_at": c.FirstSeenAt,
+			"last_seen_at":  c.LastSeenAt,
+			"is_paired":    isPaired,
+		}
+	}
+
 	writeJSON(w, http.StatusOK, map[string]any{
-		"contacts": contacts,
+		"contacts": contactsWithPaired,
 		"total":    total,
 		"limit":    opts.Limit,
 		"offset":   opts.Offset,

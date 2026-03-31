@@ -36,6 +36,7 @@ export function useContacts(filters: ContactFilters = {}) {
       return { contacts: res.contacts ?? [], total: res.total ?? 0 };
     },
     placeholderData: (prev) => prev,
+    refetchOnMount: "always", // Always refetch when component mounts
   });
 
   const contacts = data?.contacts ?? [];

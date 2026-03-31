@@ -49,6 +49,9 @@
     "user": "User",
     "group": "Group"
   },
+  "status": {
+    "revoked": "Revoked"
+  },
   "filters": {
     "allChannels": "All Channels",
     "allTypes": "All Types",
