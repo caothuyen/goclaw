@@ -140,15 +140,39 @@ func (s *PGPairingStore) DenyPairing(ctx context.Context, code string) error {
 
 func (s *PGPairingStore) RevokePairing(ctx context.Context, senderID, channel string) error {
 	tid := tenantIDForInsert(ctx)
-	result, err := s.db.ExecContext(ctx, "DELETE FROM paired_devices WHERE sender_id = $1 AND channel = $2 AND tenant_id = $3", senderID, channel, tid)
+	
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback()
+	
+	// 1. Disable cron jobs where user_id or deliver_to matches sender_id
+	_, err = tx.ExecContext(ctx, `
+		UPDATE cron_jobs 
+		SET enabled = false 
+		WHERE tenant_id = $1 
+		  AND (user_id = $2 OR deliver_to = $2)
+	`, tid, senderID)
+	if err != nil {
+		return fmt.Errorf("disable cron jobs: %w", err)
+	}
+	
+	// 2. Delete paired device
+	result, err := tx.ExecContext(ctx, `
+		DELETE FROM paired_devices 
+		WHERE sender_id = $1 AND channel = $2 AND tenant_id = $3
+	`, senderID, channel, tid)
+	if err != nil {
+		return fmt.Errorf("delete paired device: %w", err)
+	}
+	
 	n, _ := result.RowsAffected()
 	if n == 0 {
 		return fmt.Errorf("paired device not found: %s/%s", channel, senderID)
 	}
-	return nil
+	
+	return tx.Commit()
 }
 
 func (s *PGPairingStore) IsPaired(ctx context.Context, senderID, channel string) (bool, error) {
